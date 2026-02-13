@@ -103,6 +103,29 @@ async function run() {
       });
     });
 
+    // update model
+    app.put("/models/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+      const model = await modelsCollection.findOne({ _id: new ObjectId(id) });
+      if (!model) {
+        return res.status(404).send({ message: "Model not found" });
+      }
+      if (model.createdBy !== req.decoded.email) {
+        return res.status(403).send({
+          message: "Forbidden! You are not the creator.",
+        });
+      }
+      const result = await modelsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData },
+      );
+      res.send({
+        success: true,
+        result,
+      });
+    });
+    // purchase count,add
     const purchaseCollection = db.collection("purchases");
 
     app.post("/purchase/:id", verifyToken, async (req, res) => {
