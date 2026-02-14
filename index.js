@@ -129,23 +129,17 @@ async function run() {
     const purchaseCollection = db.collection("purchases");
 
     app.post("/purchase/:id", verifyToken, async (req, res) => {
-      const data = req.body;
       const id = req.params.id;
-
-      const PurchaseResult = await purchaseCollection.insertOne(data);
-
-      // increment
+      const email = req.decoded.email;
       const filter = { _id: new ObjectId(id) };
       const update = {
-        $inc: {
-          purchased: 1,
-        },
+        $inc: { purchased: 1 },
+        $addToSet: { purchasedBy: email }, // no duplicate
       };
-      const purchaseCount = await modelsCollection.updateOne(filter, update);
+      const result = await modelsCollection.updateOne(filter, update);
       res.send({
         success: true,
-        PurchaseResult,
-        purchaseCount,
+        result,
       });
     });
 
@@ -154,6 +148,15 @@ async function run() {
       const email = req.query.email;
       const result = await modelsCollection
         .find({ createdBy: email })
+        .toArray();
+      res.send(result);
+    });
+
+    // my purchases
+    app.get("/purchases", verifyToken, async (req, res) => {
+      const email = req.decoded.email;
+      const result = await modelsCollection
+        .find({ purchasedBy: email })
         .toArray();
       res.send(result);
     });
