@@ -82,7 +82,7 @@ async function run() {
     });
 
     // for add models page
-    app.post("/models", async (req, res) => {
+    app.post("/models", verifyToken, async (req, res) => {
       const model = req.body;
       const result = await modelsCollection.insertOne(model);
       res.send(result);
@@ -139,21 +139,51 @@ async function run() {
     app.post("/purchase/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const email = req.decoded.email;
-      const filter = { _id: new ObjectId(id) };
-      const update = {
-        $inc: { purchased: 1 },
-        $addToSet: { purchasedBy: email }, // no duplicate
+
+      const model = await modelsCollection.findOne({
+        _id: new ObjectId(id),
+      });
+
+      const alreadyPurchased = await purchaseCollection.findOne({
+        modelId: new ObjectId(id),
+        purchasedBy: email,
+      });
+
+      if (alreadyPurchased) {
+        return res.status(400).send({
+          message: "You already purchased this model",
+        });
+      }
+
+      // Increase purchase count
+      await modelsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $inc: { purchased: 1 } },
+      );
+
+      // Insert purchase record
+      const purchaseData = {
+        modelId: model._id,
+        name: model.name,
+        framework: model.framework,
+        image: model.image,
+        useCase: model.useCase,
+        createdBy: model.createdBy,
+        purchasedBy: email,
+        purchasedAt: new Date().toLocaleDateString(),
       };
-      const result = await modelsCollection.updateOne(filter, update);
+
+      await purchaseCollection.insertOne(purchaseData);
+
       res.send({
         success: true,
-        result,
+        message: "Purchased Successfully",
       });
     });
 
     // my models
     app.get("/my-models", verifyToken, async (req, res) => {
-      const email = req.query.email;
+      const email = req.decoded.email;
       const result = await modelsCollection
         .find({ createdBy: email })
         .toArray();
@@ -163,7 +193,7 @@ async function run() {
     // my purchases
     app.get("/purchases", verifyToken, async (req, res) => {
       const email = req.decoded.email;
-      const result = await modelsCollection
+      const result = await purchaseCollection
         .find({ purchasedBy: email })
         .toArray();
       res.send(result);
