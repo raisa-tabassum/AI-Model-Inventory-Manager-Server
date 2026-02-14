@@ -169,6 +169,36 @@ async function run() {
       res.send(result);
     });
 
+    app.post("/models/:id/rate", verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const { rating } = req.body;
+      if (!rating || rating < 1 || rating > 5) {
+        return res
+          .status(400)
+          .send({ message: "Rating must be between 1 and 5" });
+      }
+      const filter = { _id: new ObjectId(id) };
+      // push rating
+      await modelsCollection.updateOne(filter, {
+        $push: { ratings: rating },
+      });
+      // get updated model
+      const updatedModel = await modelsCollection.findOne(filter);
+      // calculate average
+      const averageRating =
+        updatedModel.ratings.reduce((sum, a) => sum + a, 0) /
+        updatedModel.ratings.length;
+      // store averageRating in DB
+      await modelsCollection.updateOne(filter, {
+        $set: { averageRating: averageRating },
+      });
+      res.send({
+        success: true,
+        averageRating,
+        totalRatings: updatedModel.ratings.length,
+      });
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
