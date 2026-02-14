@@ -54,8 +54,16 @@ async function run() {
     const modelsCollection = db.collection("models");
 
     app.get("/models", async (req, res) => {
-      const models = await modelsCollection.find().toArray();
-      res.send(models);
+      const { search, framework } = req.query;
+      let query = {};
+      if (search) {
+        query.name = { $regex: search, $options: "i" };
+      }
+      if (framework && framework !== "All") {
+        query.framework = framework;
+      }
+      const result = await modelsCollection.find(query).toArray();
+      res.send(result);
     });
 
     app.get("/featured-models", async (req, res) => {
