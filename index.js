@@ -4,7 +4,12 @@ const app = express();
 const port = process.env.PORT || 3000;
 require("dotenv").config();
 const admin = require("firebase-admin");
-const serviceAccount = require("./ai-model-inventory-manager-serviceKey.json");
+
+// index.js
+// const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = require("./ai-model-inventory-manager-serviceKey.json")
+
+// middleware
 app.use(cors());
 app.use(express.json());
 
@@ -230,7 +235,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
